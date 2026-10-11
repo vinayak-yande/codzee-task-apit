@@ -9,7 +9,7 @@ class TaskViewSet(ModelViewSet):
     pagination_class = TaskPagination
 
     def get_queryset(self):
-        return Task.objects.all()
+        return Task.objects.filter(owner=self.request.user)
 
     def filter_queryset(self, queryset):
         # Always join owners, including on detail responses. List filters should

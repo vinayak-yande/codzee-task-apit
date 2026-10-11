@@ -103,3 +103,39 @@ class PerformanceTests(APITestCase):
         self.assertEqual(len(response.data["results"]), 20)
         self.assertEqual(len(single), 2)  # COUNT + joined page SELECT
         self.assertEqual(len(many), len(single))
+
+    def test_descending_title_ordering_is_stable_across_pages(self):
+        titles = ["Alpha task", "Zebra task", "Zebra task", "Alpha task"]
+        tasks = [Task.objects.create(owner=self.user, title=title) for title in titles]
+        expected = [tasks[2].pk, tasks[1].pk, tasks[3].pk, tasks[0].pk]
+        rows = []
+        for page in [1, 2]:
+            response = self.client.get("/api/tasks/", {"ordering": "-title", "page_size": 2, "page": page})
+            self.assertEqual(response.status_code, 200)
+            rows.extend(response.data["results"])
+        self.assertEqual([row["id"] for row in rows], expected)
+
+    def test_ascending_created_at_orders_dates_and_breaks_ties(self):
+        from datetime import timedelta
+        tasks = [Task.objects.create(owner=self.user, title="Same task") for _ in range(3)]
+        now = timezone.now()
+        Task.objects.filter(pk__in=[tasks[0].pk, tasks[1].pk]).update(created_at=now)
+        Task.objects.filter(pk=tasks[2].pk).update(created_at=now - timedelta(days=1))
+        response = self.client.get("/api/tasks/?ordering=created_at")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.data["results"]], [tasks[2].pk, tasks[0].pk, tasks[1].pk])
+
+    def test_search_and_status_filters_cannot_expose_other_owners(self):
+        bob = get_user_model().objects.create_user(username="bob")
+        own = Task.objects.create(owner=self.user, title="Shared keyword", status="done")
+        Task.objects.create(owner=bob, title="Shared keyword", status="done")
+        Task.objects.create(owner=bob, title="Private keyword", status="done")
+        for params in [{}, {"status": "done"}, {"search": "Shared"}, {"search": "Shared", "status": "done"}]:
+            with self.subTest(params=params):
+                response = self.client.get("/api/tasks/", params)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["count"], 1)
+                self.assertEqual([row["id"] for row in response.data["results"]], [own.pk])
+        response = self.client.get("/api/tasks/", {"search": "Private", "status": "done"})
+        self.assertEqual(response.data["count"], 0)
+        self.assertEqual(response.data["results"], [])
