@@ -75,3 +75,43 @@ class ValidationTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         task.refresh_from_db()
         self.assertIsNone(task.due_date)
+
+    def test_unchanged_overdue_date_can_be_echoed_on_patch(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        task = Task.objects.create(owner=self.user, title="Overdue task", due_date=yesterday)
+        response = self.client.patch(
+            f"/api/tasks/{task.pk}/",
+            {"due_date": yesterday.isoformat(), "status": "done"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.due_date, yesterday)
+        self.assertEqual(task.status, "done")
+
+    def test_unchanged_overdue_date_can_be_echoed_on_put(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        task = Task.objects.create(owner=self.user, title="Overdue task", due_date=yesterday)
+        response = self.client.put(
+            f"/api/tasks/{task.pk}/",
+            {"title": "Overdue task", "due_date": yesterday.isoformat(), "status": "done"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        task.refresh_from_db()
+        self.assertEqual(task.due_date, yesterday)
+        self.assertEqual(task.status, "done")
+
+    def test_changing_existing_overdue_date_to_another_past_date_is_rejected(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        earlier = yesterday - timedelta(days=1)
+        task = Task.objects.create(owner=self.user, title="Overdue task", due_date=yesterday)
+        response = self.client.patch(
+            f"/api/tasks/{task.pk}/",
+            {"due_date": earlier.isoformat(), "status": "done"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        task.refresh_from_db()
+        self.assertEqual(task.due_date, yesterday)
+        self.assertEqual(task.status, "todo")

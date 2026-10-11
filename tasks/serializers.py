@@ -20,6 +20,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     def validate_due_date(self, value):
         # Field validators run only for supplied fields during a partial update.
-        if value is not None and value < timezone.localdate():
+        unchanged = self.instance is not None and value == self.instance.due_date
+        if value is not None and not unchanged and value < timezone.localdate():
             raise serializers.ValidationError("Due date cannot be before today.")
         return value
