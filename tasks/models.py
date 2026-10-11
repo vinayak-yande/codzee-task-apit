@@ -16,3 +16,4 @@ class Task(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["owner", "status", "-created_at"], name="task_owner_status_created")]
