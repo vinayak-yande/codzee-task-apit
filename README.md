@@ -40,9 +40,13 @@ The authenticated user owns every newly created task; the owner field is read-on
 | pr/ownership | Owner-only querysets for all CRUD operations | Cross-user data isolation |
 | pr/performance | Pagination, list filters, joined owner lookup, composite index | Bounded responses and query efficiency |
 
-Each branch starts from main. Open all three PRs against main before merging.
+Three public PRs are open against main: [validation](https://github.com/vinayak-yande/codzee-task-apit/pull/1),
+[ownership](https://github.com/vinayak-yande/codzee-task-apit/pull/2), and
+[performance](https://github.com/vinayak-yande/codzee-task-apit/pull/3).
+They initially started independently; PR 3 now includes PR 2 as a security dependency.
 PR bodies are in `docs/pr-01.md`, `docs/pr-02.md`, and `docs/pr-03.md`.
-The three changes were also merged locally to verify compatibility.
+The three current changes were combined locally: all 42 tests pass, Django checks
+pass, and no migration drift is detected. GitHub CI passes on each PR head.
 
 ## Baseline limitations
 
@@ -51,11 +55,11 @@ tasks by owner, accepts short titles and past due dates, and returns an
 unpaginated task list. These are the problems addressed by the PRs.
 Do not use the baseline with real user data or expose it on the internet.
 Known limitations are stated openly; bugs have not been planted to manufacture
-favorable review results. No Codzee feedback has yet been observed.
+favorable review results. Codzee reviews are visible on all three PRs.
 
-PRs are independent: until PR 2 is merged, PRs 1 and 3 inherit the baseline's
-authorization limitation. Cross-user isolation tests apply after PR 2 or after
-all changes are integrated. Evaluate feedback in this context.
+PR 1 inherits the baseline authorization limitation until integrated with PR 2.
+PR 3 includes PR 2's owner-isolation fix before exposing search. Main remains the
+prototype baseline so the three open PRs retain their reviewable changes. Evaluate feedback in this context.
 
 PR 3 changes list responses from an array to a paginated object with `count`,
 `next`, `previous`, and `results`. Page size defaults to 20 and is capped at 100.
@@ -66,10 +70,16 @@ affected by unrelated query parameters.
 
 ## Assessment evidence
 
-Record review links and reproducible observations in `docs/feedback-template.md`.
-The worksheet is a template, not an account of reviews that have already run.
-AI assisted with the project and tests. The candidate should review and run
-the code, validate Codzee suggestions, and write their own observed feedback.
+Codzee found an unchanged-overdue-date update bug in PR 1; PUT and PATCH
+regressions reproduced it before the fix and pass afterwards. Its PR 3 warning
+about inherited cross-user search led to including PR 2 and filtered isolation
+tests. An ordering-coverage suggestion led to explicit descending-title and
+ascending-date tests. PR 2 received a no-issues review. The dashboard displayed
+clean incremental re-reviews for the updated PR 1 and PR 3 commits. Original
+review comments remain accessible for evaluation.
+
+`docs/feedback-template.md` remains a blank worksheet. AI assisted with project
+implementation and tests; feedback should be checked against the actual reviews.
 
 ## Scope and tradeoffs
 
